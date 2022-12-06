@@ -36,11 +36,15 @@ class String
   end
 
   def utf8
-    s = force_encoding('UTF-8')
+    s = encode("UTF-16be", :invalid=>:replace, :replace=>"?").encode('UTF-8') #force_encoding('UTF-8')
     s.strip # Don't strip; test that it can be stripped (else we fall back to encode())
     s
   rescue => e
     log("Failed to encode string as UTF-8: #{self.inspect}", level: :warn)
     encode('UTF-8', invalid: :replace, undef: :replace)
+  end
+
+  def is_uuid?
+    self =~ /^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$/
   end
 end

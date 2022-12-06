@@ -3,6 +3,10 @@
   border: 1px solid #f00 !important;
 }*/
 
+.disabled {
+  background: #36423e !important;
+}
+
 div {
   display: -webkit-flex; /* Safari */
   -webkit-align-items: center; /* Safari 7.0+ */
@@ -171,11 +175,6 @@ div {
   -ms-word-wrap: normal;
   word-wrap: normal;
 }
-
-/* CodeMirror/Mergely */
-.CodeMirror { height: 100%; }
-.mergely.current.start { border-top: 1px solid #fff !important; }
-.mergely.current.end { border-bottom: 1px solid #fff !important; }
 
 /* Pushy sidebar */
 .pushy-link { margin-left: 1px; }

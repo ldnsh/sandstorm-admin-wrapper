@@ -87,9 +87,9 @@ User features:
 Command-line parameters:
 - CLI parameters are passed from the start script (`linux_start.sh`/`windows_start.bat`) to `admin-interface/lib/webapp.rb`
 - SAW supports the following command-line parameter(s)
-  - `--start/-s [server_config_name]`
-    - Example: `-s 'My Server 1' -s 'My Server 2'`
-    - Start one or more servers automatically with the named configuration (matched based on `Config Name`). This can be used in combination with system startup scripts (e.g. systemd unit example in `extras/systemd`) or Windows Task Scheduler to run your server(s) on boot.
+  - `--start/-s [server_config_name_or_id]`
+    - Example: `-s 'My Server 1' -s 'My Server 2' -s 'ebfc1f5a-ee68-45ab-9248-6f425f6d587d'`
+    - Start one or more servers automatically with the named configuration (matched based on `Config Name` or `Config ID`). This can be used in combination with system startup scripts (e.g. systemd unit example in `extras/systemd`) or Windows Task Scheduler to run your server(s) on boot.
   - `--log-level/-l [log_level]`
     - Example: `-l debug`
     - Sets the log level. Only messages at or above the set level are printed to STDOUT; all logs are still written to `admin-interface/log/sandstorm-admin-wrapper.log`. One of: `debug`, `info`, `warn`, `error`, `fatal`
@@ -97,7 +97,7 @@ Command-line parameters:
 ### Prerequisites
 
 - Windows (10 tested) or Linux (Debian 9 tested)
-- A Ruby `2.6.3`+ (check with `ruby -v`) installation with the Bundler gem (`gem install bundler`). I recommend [rbenv](https://github.com/rbenv/rbenv) to manage Ruby installations on Linux and [RubyInstaller for Windows](https://rubyinstaller.org/downloads/) to install Ruby on Windows.
+- A Ruby `3.1.2`+ (check with `ruby -v`) installation with the Bundler gem (`gem install bundler`). I recommend [rbenv](https://github.com/rbenv/rbenv) to manage Ruby installations on Linux and [RubyInstaller for Windows](https://rubyinstaller.org/downloads/) to install Ruby on Windows.
 - If using this tool to run a server, grab a portable version of [SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD#Downloading_SteamCMD) (we'll extract it to `sandstorm-admin-wrapper/steamcmd/installation`)
   - [Windows SteamCMD](https://steamcdn-a.akamaihd.net/client/installer/steamcmd.zip)
   - [Linux SteamCMD](https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz)
@@ -110,6 +110,8 @@ Command-line parameters:
 - Download and extract (or clone) the repository
 - If you plan to install/run a server, [install SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD#Downloading_SteamCMD) manually to `sandstorm-admin-wrapper/steamcmd/installation`. `steamcmd.exe`/`steamcmd.sh` should be in the `installation` directory.
   - During runtime, we change the wrapper's `HOME` environment variable to `sandstorm-admin-wrapper/steamcmd` in order to contain SteamCMD's home directory pollution (on Linux) within the wrapper. You may see shell or Steam-related files in this directory as a result.
+
+[Docker instructions](/Docker.md) are also available.
 
 ### Starting the Admin Wrapper
 

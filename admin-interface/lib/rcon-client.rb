@@ -307,6 +307,14 @@ class RconClient
 
   # User interface
   def send(server_ip, port, password, command, buffer: nil, outcome_buffer: nil, no_rx: false, ignore_status: false, ignore_message: false, timeout: 2, retries: 1)
+    command.strip!
+    if command[/^banid (.*)/]
+      # Add quotes to banid command so that we don't lose most of the banReason
+      args = $1.split(' ')
+      suffix = args.delete('SANDSTORM_ADMIN_WRAPPER') # We will want to add this back in to avoid recursive ban commands
+      args = $config_handler.parse_banid_args(args)
+      command = "banid #{args.join(' ')} #{suffix}"
+    end
     socket = get_socket_for_host server_ip, port, password
     raise "Couldn't get socket for #{server_ip}:#{port}!" if socket.nil?
     packet = build_packet command
@@ -357,16 +365,28 @@ class RconClient
       raise "#{server_ip}:#{port} Failed to parse valid RCON response for listplayers. Response: #{players_text.inspect}"
     end
     players_and_bots.map! do |entry|
+      id = entry[0].utf8.strip[/\d+/]
+      # Handle Steam ID prefix
+      steam_id = entry[2].utf8[/SteamNWI:\d{17}$/][/\d{17}/] rescue nil
+      platform_id = entry[2].utf8.strip
+      score = entry[4].utf8.strip[/\d+/]
       {
-        'id' => entry[0].utf8,
-        'name' => entry[1].utf8,
-        'steam_id' => entry[2].utf8,
-        'ip' => entry[3].utf8,
-        'score' => entry[4].utf8
+        'id' => id,
+        'name' => entry[1].utf8.strip,
+        'platform_id' => platform_id,
+        'steam_id' => steam_id,
+        'ip' => entry[3].utf8.strip,
+        'score' => score,
       }
+    end.reject! do |entry|
+      # Discard any rejects missing info due to response truncation
+      entry['id'].nil? || entry['platform_id'].nil? || entry['score'].nil?
     end
-    players = players_and_bots.reject { |entry| entry['steam_id'][/\d{17}/].nil? }
-    bots = players_and_bots.select { |entry| entry['steam_id'][/\d{17}/].nil? }
+    # Check id, ip as a stop-gap from putting bots in players when
+    # the response is truncated
+    valid_ipv4_regex = /^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)(\.(?!$)|$)){4}$/
+    players = players_and_bots.reject { |entry| entry['id'][/^\d+$/].nil? || entry['ip'][valid_ipv4_regex].nil? }
+    bots = players_and_bots.select { |entry| entry['platform_id'] == 'None:INVALID' }
     return players, bots
   end
 end

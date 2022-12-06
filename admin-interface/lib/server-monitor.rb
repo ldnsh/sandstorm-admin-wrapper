@@ -16,7 +16,7 @@ class ServerMonitor
   attr_reader :rcon_pass
   attr_reader :rcon_buffer
 
-  def initialize(ip, query_port, rcon_port, rcon_pass, interval: 15.0, delay: 5, rcon_fail_limit: 30, query_fail_limit: 30, name: '', rcon_buffer: nil, daemon_handle: nil, welcome_message_delay: 20)
+  def initialize(ip, query_port, rcon_port, rcon_pass, interval: 15.0, delay: 5, rcon_fail_limit: 60, query_fail_limit: 30, name: '', rcon_buffer: nil, daemon_handle: nil, welcome_message_delay: 20)
     @stop = false
     @ip = ip
     @query_port = query_port
@@ -166,7 +166,7 @@ class ServerMonitor
         unless @daemon_handle.config[message_option].empty?
           Thread.new(message_option) do |message_option|
             message = @daemon_handle.config[message_option]
-            message = message.gsub('${player_name}', player.dig('steam_info', 'name') || player['name']).gsub('${player_id}', player['steam_id'])
+            message = message.gsub('${player_name}', player.dig('steam_info', 'name') || player['name']).gsub('${player_id}', player['steam_id'] || 'NULL')
             sleep @welcome_message_delay # Allow time to select a loadout and see the chat
             @rcon_client.send(@ip, @rcon_port, @rcon_pass, "say #{message}")
           end
@@ -229,7 +229,7 @@ class ServerMonitor
         log "Player left: #{player['name']} (#{player['steam_id']})#{' (admin)' if is_admin}", level: :info
         unless @daemon_handle.config['leave_message'].empty?
           Thread.new do
-            message = @daemon_handle.config['leave_message'].gsub('${player_name}', player.dig('steam_info', 'name') || player['name']).gsub('${player_id}', player['steam_id'])
+            message = @daemon_handle.config['leave_message'].gsub('${player_name}', player.dig('steam_info', 'name') || player['name']).gsub('${player_id}', player['steam_id'] || 'NULL')
             @rcon_client.send(@ip, @rcon_port, @rcon_pass, "say #{message}")
           end
         end
@@ -324,7 +324,16 @@ class ServerMonitor
     @info[:a2s_connection_problem] = true
     query_fail_time = Time.now.to_i - @info[:a2s_last_success]
     log "Time since last server query success: #{query_fail_time.to_s << 's'}", level: query_fail_time > @query_fail_limit ? :error : :warn
-    @info[:server_down] ||= (query_fail_time > @query_fail_limit) && @info[:rcon_connection_problem]
+    if query_fail_time > @query_fail_limit
+      @info[:server_down] = true
+      if @daemon_handle && @daemon_handle.frozen_config['query_recovery'].to_s.casecmp('true').zero?
+        Thread.new do
+          log "Restarting server due to repeated Server Query failure", level: :warn
+          response = @daemon_handle.do_restart_server
+          log "Daemon response: #{response}"
+        end
+      end
+    end
   end
 
   def stop
@@ -332,6 +341,11 @@ class ServerMonitor
     @rcon_buffer[:status] = true
     @rcon_buffer[:message] = "#{@host} Monitor stopped"
     @thread.kill if @thread.respond_to?('kill')
+  end
+
+  def all_green?
+    # RCON and Query successfully reached
+    !@info[:a2s_connection_problem] && !@info[:rcon_connection_problem]
   end
 
   def monitor
